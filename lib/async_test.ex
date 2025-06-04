@@ -1,21 +1,50 @@
 defmodule AsyncTest do
-  @moduledoc false
-  # Helper for creating asynchronous tests
-  # - creates a public function instead of a test
-  # - creates a module with a single test that calls said function
-  # - copies all @tags to the newly created module
-  # - setup and setup_all won't work (yet)
+  @moduledoc """
+  Makes tests within a single module run asynchronously.
 
+  Just `import #{inspect(__MODULE__)}` and replace
+  `test` with `async_test`. It should be a drop-in
+  replacement.
+
+  #{inspect(__MODULE__)} works in the following way:
+  - create a public function instead of a test
+  - create a new module with a single test that calls that function
+  - copy all `@tags` to the newly created module
+  - handle `setup` and `setup_all` similarly to `test`s - the `setup`
+  in the new module calls a public function from the original module
+  - ensure `setup_all` is called only once - store its result in an
+  `Agent` and retrieve when needed
+  """
+
+  # Like `unquote`, but only one level up in nested `quote`s tree.
+  # For example:
+  #
+  # foo = 1
+  # quote do
+  #   bar = 1
+  #   quote do
+  #     unquote(foo) # use unquote to access foo
+  #     unquote(unquoted(bar)) # use unquoted to access bar
+  #   end
+  # end
   defmacrop unquoted(code) do
+    # Quote, because we need to return AST that generates AST.
+    # `Macro.escape` drops variables' context and therefore
+    # doesn't work.
     quoted = {:quote, [], [[do: code]]}
+    # Unquote, because that's what this macro does
     unquoted = [:unquote, [], [quoted]]
+    # That's what `Macro.escape_once` would do.
+    # We escape one level not to escape `code` which is already
+    # quoted.
     escaped_once = {:{}, [], unquoted}
     escaped_once
   end
 
-  defmacro async_test(test_name, context \\ quote(do: %{}), do: block) do
+  @doc @moduledoc
+  defmacro async_test(test_name, context \\ quote(do: _context), do: block) do
     quote do
-      params = unquote(__MODULE__).__params__(unquote(test_name), __MODULE__)
+      params = AsyncTest.CreateTestUtils.params(unquote(test_name), __MODULE__)
 
       Enum.each(params.setups.proxies, fn %{proxy: proxy, fun: fun} ->
         def unquote(unquoted(proxy))(ctx) do
@@ -39,7 +68,7 @@ defmodule AsyncTest do
 
       def unquote(unquoted(params.after_compile_fun_name))(_bytecode, _env) do
         params = unquote(unquoted(escaped_params))
-        unquote(__MODULE__).__create_module__(__MODULE__, params)
+        AsyncTest.CreateTestUtils.create_module(__MODULE__, params)
       end
 
       @after_compile {__MODULE__, params.after_compile_fun_name}
@@ -47,8 +76,15 @@ defmodule AsyncTest do
       Module.delete_attribute(__MODULE__, :tag)
     end
   end
+end
 
-  def __params__(test_name, module) do
+defmodule AsyncTest.CreateTestUtils do
+  @moduledoc false
+  # Module with utility functions, kept here not to be imported
+  # with `import AsyncTest`. These utility functions exist to keep
+  # the generated code (relatively) small.
+
+  def params(test_name, module) do
     fun_name = :"async_test_#{test_name}"
 
     if test_fun_defined?(module, fun_name) do
@@ -72,7 +108,7 @@ defmodule AsyncTest do
     }
   end
 
-  def __create_module__(caller_module, params) do
+  def create_module(caller_module, params) do
     content =
       quote do
         use ExUnit.Case, async: true
