@@ -46,6 +46,30 @@ defmodule AsyncTest do
           end
       end)
 
+      setup_alls =
+        Module.get_attribute(__MODULE__, :ex_unit_setup_all)
+        |> Enum.map(fn
+          {module, fun} -> {module, fun}
+          fun -> {__MODULE__, :"__async_test_setup_all_#{fun}"}
+        end)
+
+      Module.get_attribute(__MODULE__, :ex_unit_setup_all)
+      |> Enum.each(fn
+        {_module, _fun} ->
+          nil
+
+        fun ->
+          name = :"__async_test_setup_all_#{fun}"
+
+          unless Module.defines?(__MODULE__, {name, 1}) do
+            def unquote(unquoted_var(:name))(ctx) do
+              agent_name = Module.concat(__MODULE__, unquote(unquoted_var(:name)))
+              Agent.start_link(fn -> unquote(unquoted_var(:fun))(ctx) end, name: agent_name)
+              Agent.get(agent_name, & &1)
+            end
+          end
+      end)
+
       def unquote(unquoted_var(:fun_name))(unquote(context)) do
         unquote(block)
       end
@@ -55,6 +79,7 @@ defmodule AsyncTest do
         fun_name = unquote(unquoted_var(:fun_name))
         tags_attrs = unquote(unquoted_var(:tags_attrs))
         setups = unquote(unquoted_var(:setups))
+        setup_alls = unquote(unquoted_var(:setup_alls))
 
         content =
           quote do
@@ -65,6 +90,7 @@ defmodule AsyncTest do
             end)
 
             @ex_unit_setup unquote(setups)
+            @ex_unit_setup_all unquote(setup_alls)
 
             test unquote(test_name), context do
               unquote(__MODULE__).unquote(fun_name)(context)

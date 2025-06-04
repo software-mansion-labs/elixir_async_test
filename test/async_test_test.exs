@@ -3,6 +3,21 @@ defmodule AsyncTestTest do
 
   import TestCase
 
+  test_case "setup all" do
+    setup_all do
+      {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__)
+      [foo: :bar]
+    end
+
+    async_test "test 1", ctx do
+      assert ctx.foo == :bar
+    end
+
+    async_test "test 2", ctx do
+      assert ctx.foo == :bar
+    end
+  end
+
   test_case "setup" do
     setup do
       [foo: :bar]
