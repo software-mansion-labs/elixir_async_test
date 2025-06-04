@@ -8,9 +8,6 @@ defmodule AsyncTestTest do
       [foo: :bar]
     end
 
-    Module.attributes_in(__MODULE__)
-    |> Enum.map(&IO.inspect({&1, Module.get_attribute(__MODULE__, &1)}))
-
     async_test "test", ctx do
       assert ctx.foo == :bar
     end

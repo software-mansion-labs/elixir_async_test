@@ -26,6 +26,26 @@ defmodule AsyncTest do
           |> Enum.map(&{attr, &1})
         end)
 
+      setups =
+        Module.get_attribute(__MODULE__, :ex_unit_setup)
+        |> Enum.map(fn
+          {module, fun} -> {module, fun}
+          fun -> {__MODULE__, :"__async_test_setup_#{fun}"}
+        end)
+
+      Module.get_attribute(__MODULE__, :ex_unit_setup)
+      |> Enum.each(fn
+        {_module, _fun} ->
+          nil
+
+        fun ->
+          name = :"__async_test_setup_#{fun}"
+
+          def unquote(unquoted_var(:name))(ctx) do
+            unquote(unquoted_var(:fun))(ctx)
+          end
+      end)
+
       def unquote(unquoted_var(:fun_name))(unquote(context)) do
         unquote(block)
       end
@@ -34,6 +54,7 @@ defmodule AsyncTest do
         test_name = unquote(unquoted(test_name))
         fun_name = unquote(unquoted_var(:fun_name))
         tags_attrs = unquote(unquoted_var(:tags_attrs))
+        setups = unquote(unquoted_var(:setups))
 
         content =
           quote do
@@ -42,6 +63,8 @@ defmodule AsyncTest do
             Enum.each(unquote(tags_attrs), fn {name, value} ->
               Module.put_attribute(__MODULE__, name, value)
             end)
+
+            @ex_unit_setup unquote(setups)
 
             test unquote(test_name), context do
               unquote(__MODULE__).unquote(fun_name)(context)
