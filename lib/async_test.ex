@@ -49,6 +49,12 @@ defmodule AsyncTest do
   end
 
   def __params__(test_name, module) do
+    fun_name = :"async_test_#{test_name}"
+
+    if test_fun_defined?(module, fun_name) do
+      raise "Test already defined: #{test_name}"
+    end
+
     tags_attrs =
       [:tag, :describetag, :moduletag]
       |> Enum.flat_map(fn attr ->
@@ -58,7 +64,7 @@ defmodule AsyncTest do
     %{
       test_name: test_name,
       test_module_name: Module.concat(module, "AsyncTest_#{test_name}"),
-      fun_name: :"async_test_#{test_name}",
+      fun_name: fun_name,
       after_compile_fun_name: :"async_test_ac_#{test_name}",
       setups: setups_proxies(module, :ex_unit_setup),
       setup_alls: setups_proxies(module, :ex_unit_setup_all),
@@ -100,8 +106,12 @@ defmodule AsyncTest do
         {_module, _fun} -> []
         fun -> [%{fun: fun, proxy: :"__async_test_#{attr_name}#{fun}"}]
       end)
-      |> Enum.reject(&Module.defines?(module, {&1.proxy, 1}))
+      |> Enum.reject(&test_fun_defined?(module, &1.proxy))
 
     %{proxied_attr: proxied_attr, proxies: proxies}
+  end
+
+  defp test_fun_defined?(module, name) do
+    Module.defines?(module, {name, 1})
   end
 end

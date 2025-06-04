@@ -3,6 +3,18 @@ defmodule AsyncTestTest do
 
   import TestCase
 
+  test "repeated name" do
+    assert_raise RuntimeError, "Test already defined: foo", fn ->
+      defmodule __MODULE__.RepeatedName do
+        use ExUnit.Case
+        import AsyncTest
+
+        async_test("foo", do: :ok)
+        async_test("foo", do: :ok)
+      end
+    end
+  end
+
   test_case "setup all" do
     setup_all do
       {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__)
