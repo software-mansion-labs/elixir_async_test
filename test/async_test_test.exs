@@ -41,33 +41,31 @@ defmodule AsyncTestTest do
   end
 
   test_case "tests work asynchronously" do
-    async_test "test 1" do
-      check_for_async()
-    end
+    @num_tests 5
 
-    async_test "test 2" do
-      check_for_async()
-    end
-
-    defp check_for_async() do
-      task_name = __MODULE__.CheckForAsync
-
-      {:ok, pid} =
-        Task.start_link(fn ->
-          pid1 = receive do: ({:test, pid} -> pid)
-          pid2 = receive do: ({:test, pid} -> pid)
-          send(pid1, :ok)
-          send(pid2, :ok)
-        end)
-
-      try do
-        Process.register(pid, task_name)
-      rescue
-        _e -> :ok
+    Enum.each(1..@num_tests, fn i ->
+      async_test "test #{i}}" do
+        perform_test()
       end
+    end)
 
-      send(task_name, {:test, self()})
-      assert_receive :ok, 5000
+    defp perform_test() do
+      agent_name = __MODULE__.CheckForAsync
+
+      Agent.start_link(fn -> [] end, name: agent_name)
+      pid = self()
+
+      Agent.update(agent_name, fn pids ->
+        pids = [pid | pids]
+
+        if length(pids) == @num_tests do
+          Enum.each(pids, &send(&1, :ok))
+        end
+
+        pids
+      end)
+
+      assert_receive :ok
     end
   end
 end
