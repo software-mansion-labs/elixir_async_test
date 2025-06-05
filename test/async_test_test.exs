@@ -3,55 +3,6 @@ defmodule AsyncTestTest do
 
   import TestCase
 
-  test "repeated name" do
-    assert_raise RuntimeError, "Test already defined: foo", fn ->
-      defmodule __MODULE__.RepeatedName do
-        use ExUnit.Case
-        import AsyncTest
-
-        async_test("foo", do: :ok)
-        async_test("foo", do: :ok)
-      end
-    end
-  end
-
-  test_case "setup all" do
-    setup_all do
-      {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__)
-      [foo: :bar]
-    end
-
-    async_test "test 1", ctx do
-      assert ctx.foo == :bar
-    end
-
-    async_test "test 2", ctx do
-      assert ctx.foo == :bar
-    end
-  end
-
-  test_case "setup" do
-    setup do
-      [foo: :bar]
-    end
-
-    async_test "test", ctx do
-      assert ctx.foo == :bar
-    end
-  end
-
-  test_case "Tags", exclude: :b do
-    @tag :a
-    async_test "a" do
-      :ok
-    end
-
-    @tag :b
-    async_test "b" do
-      assert false
-    end
-  end
-
   test_case "tests work asynchronously" do
     @num_tests 5
 
@@ -78,6 +29,55 @@ defmodule AsyncTestTest do
       end)
 
       assert_receive :ok
+    end
+  end
+
+  test_case "Tags", exclude: :b do
+    @tag :a
+    async_test "a" do
+      :ok
+    end
+
+    @tag :b
+    async_test "b" do
+      assert false
+    end
+  end
+
+  test_case "setup" do
+    setup do
+      [foo: :bar]
+    end
+
+    async_test "test", ctx do
+      assert ctx.foo == :bar
+    end
+  end
+
+  test_case "setup all" do
+    setup_all do
+      {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__)
+      [foo: :bar]
+    end
+
+    async_test "test 1", ctx do
+      assert ctx.foo == :bar
+    end
+
+    async_test "test 2", ctx do
+      assert ctx.foo == :bar
+    end
+  end
+
+  test "duplicate name" do
+    assert_raise RuntimeError, "Test already defined: foo", fn ->
+      defmodule __MODULE__.RepeatedName do
+        use ExUnit.Case
+        import AsyncTest
+
+        async_test("foo", do: :ok)
+        async_test("foo", do: :ok)
+      end
     end
   end
 end
