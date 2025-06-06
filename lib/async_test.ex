@@ -33,11 +33,11 @@ defmodule AsyncTest do
     # doesn't work.
     quoted = {:quote, [], [[do: code]]}
     # Unquote, because that's what this macro does
-    unquoted = [:unquote, [], [quoted]]
+    unquoted = {:unquote, [], [quoted]}
     # That's what `Macro.escape_once` would do.
     # We escape one level not to escape `code` which is already
     # quoted.
-    escaped_once = {:{}, [], unquoted}
+    escaped_once = {:{}, [], Tuple.to_list(unquoted)}
     escaped_once
   end
 
@@ -45,20 +45,6 @@ defmodule AsyncTest do
   defmacro async_test(test_name, context \\ quote(do: _context), do: block) do
     quote do
       params = AsyncTest.CreateTestUtils.params(unquote(test_name), __MODULE__)
-
-      Enum.each(params.setups.proxies, fn %{proxy: proxy, fun: fun} ->
-        def unquote(unquoted(proxy))(ctx) do
-          unquote(unquoted(fun))(ctx)
-        end
-      end)
-
-      Enum.each(params.setup_alls.proxies, fn %{proxy: proxy, fun: fun} ->
-        def unquote(unquoted(proxy))(ctx) do
-          agent_name = Module.concat(__MODULE__, unquote(unquoted(proxy)))
-          Agent.start_link(fn -> unquote(unquoted(fun))(ctx) end, name: agent_name)
-          Agent.get(agent_name, & &1)
-        end
-      end)
 
       def unquote(unquoted(params.fun_name))(unquote(context)) do
         unquote(block)
@@ -69,6 +55,10 @@ defmodule AsyncTest do
       def unquote(unquoted(params.after_compile_fun_name))(_bytecode, _env) do
         params = unquote(unquoted(escaped_params))
         AsyncTest.CreateTestUtils.create_module(__MODULE__, params)
+      end
+
+      unless AsyncTest.CreateTestUtils in @before_compile do
+        @before_compile AsyncTest.CreateTestUtils
       end
 
       @after_compile {__MODULE__, params.after_compile_fun_name}
@@ -85,6 +75,13 @@ defmodule AsyncTest.CreateTestUtils do
   # the generated code (relatively) small.
 
   def params(test_name, module) do
+    describe =
+      case Module.get_attribute(module, :ex_unit_describe) do
+        {_line, name, _idx} -> name
+        nil -> nil
+      end
+
+    test_name = "#{if describe, do: "#{describe} ", else: ""}#{test_name}"
     fun_name = :"async_test_#{test_name}"
 
     if test_fun_defined?(module, fun_name) do
@@ -102,13 +99,45 @@ defmodule AsyncTest.CreateTestUtils do
       test_module_name: Module.concat(module, "AsyncTest_#{test_name}"),
       fun_name: fun_name,
       after_compile_fun_name: :"async_test_ac_#{test_name}",
-      setups: setups_proxies(module, :ex_unit_setup),
-      setup_alls: setups_proxies(module, :ex_unit_setup_all),
-      tags_attrs: tags_attrs
+      tags_attrs: tags_attrs,
+      describe: describe
     }
   end
 
+  defmacro __before_compile__(env) do
+    describes =
+      Module.get_attribute(env.module, :ex_unit_used_describes)
+      |> Map.values()
+      |> Enum.reject(&(&1 == nil))
+      |> Enum.map(&proxy_test_fun(&1, :describe))
+
+    setups =
+      setups_to_proxy(env.module, :ex_unit_setup)
+      |> Enum.map(&proxy_test_fun(&1, :setup))
+
+    setup_alls =
+      setups_to_proxy(env.module, :ex_unit_setup_all)
+      |> Enum.map(fn fun ->
+        transform =
+          &quote do
+            AsyncTest.CreateTestUtils.agent_cache(__MODULE__, unquote(fun), fn -> unquote(&1) end)
+          end
+
+        proxy_test_fun(fun, :setup_all, transform)
+      end)
+
+    quote do
+      unquote_splicing(describes)
+      unquote_splicing(setups)
+      unquote_splicing(setup_alls)
+    end
+  end
+
   def create_module(caller_module, params) do
+    setups = setups_attr(caller_module, :ex_unit_setup, :setup)
+    setup_alls = setups_attr(caller_module, :ex_unit_setup_all, :setup_all)
+    describe_setups = describe_setups(caller_module, params.describe)
+
     content =
       quote do
         use ExUnit.Case, async: true
@@ -117,8 +146,8 @@ defmodule AsyncTest.CreateTestUtils do
           Module.put_attribute(__MODULE__, name, value)
         end)
 
-        @ex_unit_setup unquote(params.setups.proxied_attr)
-        @ex_unit_setup_all unquote(params.setup_alls.proxied_attr)
+        @ex_unit_setup unquote(describe_setups ++ setups)
+        @ex_unit_setup_all unquote(setup_alls)
 
         test unquote(params.test_name), context do
           unquote(caller_module).unquote(params.fun_name)(context)
@@ -128,23 +157,50 @@ defmodule AsyncTest.CreateTestUtils do
     Module.create(params.test_module_name, content, __ENV__)
   end
 
-  defp setups_proxies(module, attr_name) do
-    attr = Module.get_attribute(module, attr_name)
+  def agent_cache(module, name, fun) do
+    agent_name = Module.concat([__MODULE__, :setup_all, module, name])
+    Agent.start_link(fun, name: agent_name)
+    Agent.get(agent_name, & &1)
+  end
 
-    proxied_attr =
-      Enum.map(attr, fn
-        {module, fun} -> {module, fun}
-        fun -> {module, :"__async_test_#{attr_name}#{fun}"}
-      end)
+  defp setups_to_proxy(module, attr_name) do
+    Module.get_attribute(module, attr_name)
+    |> Enum.flat_map(fn
+      {_module, _fun} -> []
+      fun -> [fun]
+    end)
+  end
 
-    proxies =
-      Enum.flat_map(attr, fn
-        {_module, _fun} -> []
-        fun -> [%{fun: fun, proxy: :"__async_test_#{attr_name}#{fun}"}]
-      end)
-      |> Enum.reject(&test_fun_defined?(module, &1.proxy))
+  defp setups_attr(module, attr_name, prefix) do
+    Module.get_attribute(module, attr_name)
+    |> Enum.map(fn
+      {module, fun} -> {module, fun}
+      fun -> {module, fun_prefix(fun, prefix)}
+    end)
+  end
 
-    %{proxied_attr: proxied_attr, proxies: proxies}
+  defp describe_setups(module, describe) do
+    describes = Module.get_attribute(module, :ex_unit_used_describes)
+
+    if fun = Map.get(describes, describe) do
+      [{module, fun_prefix(fun, :describe)}]
+    else
+      []
+    end
+  end
+
+  defp proxy_test_fun(fun, proxy_prefix, transform \\ &Function.identity/1) do
+    call = transform.(quote do: unquote(fun)(ctx))
+
+    quote do
+      def unquote(fun_prefix(fun, proxy_prefix))(ctx) do
+        unquote(call)
+      end
+    end
+  end
+
+  defp fun_prefix(name, prefix) do
+    :"__async_test_#{prefix}#{name}"
   end
 
   defp test_fun_defined?(module, name) do

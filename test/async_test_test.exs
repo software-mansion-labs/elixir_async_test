@@ -56,16 +56,88 @@ defmodule AsyncTestTest do
 
   test_case "setup all" do
     setup_all do
-      {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__)
+      {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__.A1)
       [foo: :bar]
+    end
+
+    setup_all do
+      {:ok, _pid} = Agent.start_link(fn -> :ok end, name: __MODULE__.A2)
+      [bar: :baz]
     end
 
     async_test "test 1", ctx do
       assert ctx.foo == :bar
+      assert ctx.bar == :baz
     end
 
     async_test "test 2", ctx do
       assert ctx.foo == :bar
+      assert ctx.bar == :baz
+    end
+  end
+
+  @tag :dsc
+  test_case "describe" do
+    setup do
+      [foo: 0, bar: 0]
+    end
+
+    setup_all do
+      [foo_all: 0]
+    end
+
+    describe "describe 1" do
+      setup do
+        [foo: 1]
+      end
+
+      test "wtf", ctx do
+        assert ctx.foo_all == 0
+      end
+
+      async_test "test 1", ctx do
+        assert ctx.foo == 1
+        assert ctx.bar == 0
+        assert ctx.baz == 0
+        assert ctx.foo_all == 0
+      end
+    end
+
+    describe "describe 2" do
+      async_test "test", ctx do
+        assert ctx.foo == 0
+        assert ctx.bar == 0
+        assert ctx.baz == 0
+        assert ctx.foo_all == 0
+      end
+    end
+
+    describe "describe 3" do
+      setup do
+        [foo: 2]
+      end
+
+      async_test "test 1", ctx do
+        assert ctx.foo == 2
+        assert ctx.bar == 0
+        assert ctx.baz == 1
+        assert ctx.foo_all == 0
+      end
+
+      setup do
+        [baz: 1]
+      end
+
+      async_test "test 2", ctx do
+        assert ctx.foo == 2
+        assert ctx.bar == 0
+        assert ctx.baz == 1
+        assert ctx.foo_all == 0
+      end
+    end
+
+    setup do
+      [baz: 0]
     end
   end
 
