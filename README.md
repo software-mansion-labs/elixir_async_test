@@ -42,7 +42,7 @@ Now, all the `async_test`s will run asynchronously regardless of the module.
 
 ## Motivation
 
-TL;DR Async tests in a single module may be harmful, thus ExUnit doesn't support them, but in particular cases they're beneficial.
+TL;DR Async tests in a single module may harm performance instead of improving it, thus ExUnit doesn't support them, but in particular cases they're beneficial.
 
 ExUnit always runs tests in a single module synchronously (except of [parameterized tests](https://hexdocs.pm/ex_unit/ExUnit.Case.html#module-parameterized-tests)). [This PR](https://github.com/elixir-lang/elixir/pull/13283) was an attempt to change it, but, as described there, it didn't bring improvement to examined projects.
 
