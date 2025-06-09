@@ -13,7 +13,7 @@ defmodule AsyncTest do
   - handle `setup` and `setup_all` similarly to `test`s - the `setup`
   in the new module calls a public function from the original module
   - ensure `setup_all` is called only once - store its result in an
-  `Agent` and retrieve when needed
+  `Agent` and retrieve it when needed
   """
 
   # Like `unquote`, but only one level up in nested `quote`s tree.
