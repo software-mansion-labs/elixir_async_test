@@ -144,10 +144,17 @@ defmodule AsyncTestTest do
       end
 
       async_test "test", ctx do
+        pid = self()
+
         Agent.update(ctx.agent, fn
-          nil -> {:param, ctx.p}
-          {:param, param} -> assert [1, 2] = Enum.sort([param, ctx.p])
+          nil ->
+            {:param, pid, ctx.p}
+
+          {:param, other_pid, param} ->
+            Enum.each([pid, other_pid], &send(&1, Enum.sort([param, ctx.p])))
         end)
+
+        assert_receive [1, 2]
       end
     end
   end
