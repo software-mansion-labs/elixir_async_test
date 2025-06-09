@@ -7,7 +7,7 @@ defmodule AsyncTestTest do
     @num_tests 5
 
     Enum.each(1..@num_tests, fn i ->
-      async_test "test #{i}}" do
+      async_test "test #{i}" do
         perform_test()
       end
     end)
@@ -76,7 +76,6 @@ defmodule AsyncTestTest do
     end
   end
 
-  @tag :dsc
   test_case "describe" do
     setup do
       [foo: 0, bar: 0]
@@ -89,10 +88,6 @@ defmodule AsyncTestTest do
     describe "describe 1" do
       setup do
         [foo: 1]
-      end
-
-      test "wtf", ctx do
-        assert ctx.foo_all == 0
       end
 
       async_test "test 1", ctx do
@@ -150,6 +145,12 @@ defmodule AsyncTestTest do
         async_test("foo", do: :ok)
         async_test("foo", do: :ok)
       end
+    end
+  end
+
+  test_case "weird name" do
+    async_test "$%^9" do
+      :ok
     end
   end
 end

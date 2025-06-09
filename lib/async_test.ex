@@ -96,7 +96,7 @@ defmodule AsyncTest.CreateTestUtils do
 
     %{
       test_name: test_name,
-      test_module_name: Module.concat(module, "AsyncTest_#{test_name}"),
+      test_module_name: test_module_name(module, test_name),
       fun_name: fun_name,
       after_compile_fun_name: :"async_test_ac_#{test_name}",
       tags_attrs: tags_attrs,
@@ -205,5 +205,17 @@ defmodule AsyncTest.CreateTestUtils do
 
   defp test_fun_defined?(module, name) do
     Module.defines?(module, {name, 1})
+  end
+
+  defp test_module_name(module, test_name) do
+    escaped_test_name = String.replace(test_name, ~r/[^A-Za-z0-9]/, "_")
+
+    short_hash =
+      "#{module}/#{test_name}"
+      |> :erlang.md5()
+      |> Base.encode16(case: :lower)
+      |> binary_slice(0..7)
+
+    Module.concat(module, "AT_#{escaped_test_name}_#{short_hash}")
   end
 end

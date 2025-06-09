@@ -1,6 +1,6 @@
 defmodule TestCase do
   defmacro test_case(name, options \\ [], do: block) do
-    module_name = Module.concat(__CALLER__.module, name)
+    module_name = Module.concat(__CALLER__.module, :"Case_#{String.replace(name, ~r"\s", "_")}")
     options = Keyword.merge([exclude: [], include: [], only_test_ids: nil], options)
 
     quote do
@@ -12,6 +12,8 @@ defmodule TestCase do
           use ExUnit.Case
 
           import AsyncTest
+
+          @moduletag :tmp_dir
 
           unquote(block)
         end
