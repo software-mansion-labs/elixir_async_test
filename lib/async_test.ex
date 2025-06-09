@@ -121,7 +121,7 @@ defmodule AsyncTest.CreateTestUtils do
     describes =
       Module.get_attribute(env.module, :ex_unit_used_describes)
       |> Map.values()
-      |> Enum.reject(&(&1 == nil))
+      |> Enum.reject(&is_nil/1)
       |> Enum.map(&proxy_test_fun(&1, :describe))
 
     setups =
