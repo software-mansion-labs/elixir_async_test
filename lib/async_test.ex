@@ -138,9 +138,12 @@ defmodule AsyncTest.CreateTestUtils do
     setup_alls = setups_attr(caller_module, :ex_unit_setup_all, :setup_all)
     describe_setups = describe_setups(caller_module, params.describe)
 
+    case_options =
+      Macro.escape(Module.get_attribute(caller_module, :ex_unit_module, []) ++ [async: true])
+
     content =
       quote do
-        use ExUnit.Case, async: true
+        use ExUnit.Case, unquote(case_options)
 
         Enum.each(unquote(params.tags_attrs), fn {name, value} ->
           Module.put_attribute(__MODULE__, name, value)

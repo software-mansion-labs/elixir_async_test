@@ -32,7 +32,7 @@ defmodule AsyncTestTest do
     end
   end
 
-  test_case "Tags", exclude: :b do
+  test_case "Tags", ex_unit: [exclude: :b] do
     @tag :a
     async_test "a" do
       :ok
@@ -133,6 +133,22 @@ defmodule AsyncTestTest do
 
     setup do
       [baz: 0]
+    end
+  end
+
+  if Version.compare("1.18.0", System.version()) != :gt do
+    test_case "parameterize", case: [parameterize: [%{p: 1}, %{p: 2}]] do
+      setup_all do
+        {:ok, pid} = Agent.start_link(fn -> nil end)
+        [agent: pid]
+      end
+
+      async_test "test", ctx do
+        Agent.update(ctx.agent, fn
+          nil -> {:param, ctx.p}
+          {:param, param} -> assert [1, 2] = Enum.sort([param, ctx.p])
+        end)
+      end
     end
   end
 

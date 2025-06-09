@@ -1,7 +1,14 @@
 defmodule TestCase do
   defmacro test_case(name, options \\ [], do: block) do
     module_name = Module.concat(__CALLER__.module, :"Case_#{String.replace(name, ~r"\s", "_")}")
-    options = Keyword.merge([exclude: [], include: [], only_test_ids: nil], options)
+
+    ex_unit_options =
+      Keyword.merge(
+        [exclude: [], include: [], only_test_ids: nil],
+        Keyword.get(options, :ex_unit, [])
+      )
+
+    case_options = Keyword.get(options, :case, [])
 
     quote do
       test unquote(name) do
@@ -9,7 +16,7 @@ defmodule TestCase do
         on_exit(fn -> ExUnit.configure(ex_unit_config) end)
 
         defmodule unquote(module_name) do
-          use ExUnit.Case
+          use ExUnit.Case, unquote(case_options)
 
           import AsyncTest
 
@@ -18,7 +25,7 @@ defmodule TestCase do
           unquote(block)
         end
 
-        ExUnit.configure(unquote(options))
+        ExUnit.configure(unquote(ex_unit_options))
         result = ExUnit.run([unquote(module_name)])
         assert %{failures: 0} = result
         result
