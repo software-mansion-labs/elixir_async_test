@@ -42,7 +42,21 @@ defmodule AsyncTest do
   end
 
   @doc @moduledoc
-  defmacro async_test(test_name, context \\ quote(do: _context), do: block) do
+  if Application.compile_env(:async_test, :fallback_to_test, false) do
+    defmacro async_test(test_name, context \\ quote(do: _context), do: block) do
+      quote do
+        test unquote(test_name), unquote(context) do
+          unquote(block)
+        end
+      end
+    end
+  else
+    defmacro async_test(test_name, context \\ quote(do: _context), do: block) do
+      do_async_test(test_name, context, block)
+    end
+  end
+
+  defp do_async_test(test_name, context, block) do
     quote do
       params = AsyncTest.CreateTestUtils.params(unquote(test_name), __MODULE__)
 
