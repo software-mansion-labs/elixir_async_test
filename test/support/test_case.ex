@@ -1,4 +1,7 @@
 defmodule TestCase do
+  @moduledoc """
+  Utility for creating and running test cases within tests.
+  """
   defmacro test_case(name, options \\ [], do: block) do
     module_name = Module.concat(__CALLER__.module, :"Case_#{String.replace(name, ~r"\s", "_")}")
 
