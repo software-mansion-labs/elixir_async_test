@@ -1,6 +1,6 @@
 defmodule AsyncTest do
   @moduledoc """
-  Makes tests within a single module run asynchronously.
+  Makes tests within a single module (ExUnit Case) run asynchronously.
 
   Just `import #{inspect(__MODULE__)}` and replace
   `test` with `async_test`. It should be a drop-in
@@ -9,9 +9,8 @@ defmodule AsyncTest do
   #{inspect(__MODULE__)} works in the following way:
   - create a public function instead of a test
   - create a new module with a single test that calls that function
-  - copy all `@tags` to the newly created module
-  - handle `setup` and `setup_all` similarly to `test`s - the `setup`
-  in the new module calls a public function from the original module
+  - mimic `@tags`, `setup`, `setup_all`, and `describe` structure
+  in the new module
   - ensure `setup_all` is called only once - store its result in an
   `Agent` and retrieve it when needed
   """

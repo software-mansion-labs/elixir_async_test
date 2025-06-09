@@ -1,17 +1,13 @@
 # AsyncTest
 
- Makes tests within a single module run asynchronously.
+ Makes tests within a single module (ExUnit Case) run asynchronously.
 
-  Just `import #{inspect(__MODULE__)}` and replace
-  `test` with `async_test`. It should be a drop-in
-  replacement.
+  Just `import AsyncTest` and replace `test`s with `async_test`s. It should be a drop-in replacement.
 
-  #{inspect(__MODULE__)} works in the following way:
+  AsyncTest works in the following way:
   - create a public function instead of a test
   - create a new module with a single test that calls that function
-  - copy all `@tags` to the newly created module
-  - handle `setup` and `setup_all` similarly to `test`s - the `setup`
-  in the new module calls a public function from the original module
+  - mimic `@tags`, `setup`, `setup_all`, and `describe` structure in the new module
   - ensure `setup_all` is called only once - store its result in an
   `Agent` and retrieve it when needed
 
@@ -22,12 +18,12 @@ Add `async_test` to deps:
 ```elixir
 def deps do
   [
-    {:async_test, github: "software-mansion-labs/elixir_async_test"}
+    {:async_test, github: "software-mansion-labs/elixir_async_test", only: :test}
   ]
 end
 ```
 
-In tests, `import AsyncTest` and replace `test` with `async_test`:
+In tests, `import AsyncTest` and replace `test`s with `async_test`s:
 
 ```diff
  defmodule MyTest do
@@ -39,9 +35,18 @@ In tests, `import AsyncTest` and replace `test` with `async_test`:
 +  async_test "my test" do
     assert true
    end
+ end
 ```
 
 Now, all the `async_test`s will run asynchronously regardless of the module.
+
+## Motivation
+
+TL;DR Async tests in a single module may be harmful, thus ExUnit doesn't support them, but in particular cases they're beneficial.
+
+ExUnit always runs tests in a single module synchronously (except of [parameterized tests](https://hexdocs.pm/ex_unit/ExUnit.Case.html#module-parameterized-tests)). [This PR](https://github.com/elixir-lang/elixir/pull/13283) was an attempt to change it, but, as described there, it didn't bring improvement to examined projects.
+
+Sometimes, though, async tests in a single module help a lot. One example is [Boombox](https://github.com/membraneframework/boombox), where there's a lot of IO-bound, independent tests, and no reason to move them to different modules. Another one is [Popcorn](https://github.com/software-mansion/popcorn), where tests are CPU-bound, but also independent and very unevenly distributed across modules.
 
 ## Authors
 
