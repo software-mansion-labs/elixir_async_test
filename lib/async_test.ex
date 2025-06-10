@@ -67,7 +67,7 @@ defmodule AsyncTest do
 
       def unquote(unquoted(params.after_compile_fun_name))(_bytecode, _env) do
         params = unquote(unquoted(escaped_params))
-        AsyncTest.CreateTestUtils.create_module(__MODULE__, params)
+        AsyncTest.CreateTestUtils.create_module(__ENV__, params)
       end
 
       unless AsyncTest.CreateTestUtils in @before_compile do
@@ -146,7 +146,8 @@ defmodule AsyncTest.CreateTestUtils do
     end
   end
 
-  def create_module(caller_module, params) do
+  def create_module(caller_env, params) do
+    %{module: caller_module} = caller_env
     setups = setups_attr(caller_module, :ex_unit_setup, :setup)
     setup_alls = setups_attr(caller_module, :ex_unit_setup_all, :setup_all)
     describe_setups = describe_setups(caller_module, params.describe)
@@ -170,7 +171,7 @@ defmodule AsyncTest.CreateTestUtils do
         end
       end
 
-    Module.create(params.test_module_name, content, __ENV__)
+    Module.create(params.test_module_name, content, caller_env)
   end
 
   def agent_cache(module, name, fun) do

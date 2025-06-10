@@ -13,6 +13,15 @@ defmodule TestCase do
 
     case_options = Keyword.get(options, :case, [])
 
+    assertions =
+      Keyword.get(options, :result, [])
+      |> Keyword.put_new(:failures, 0)
+      |> Enum.map(fn {k, v} ->
+        quote do
+          assert unquote(Macro.escape(v)) == result[unquote(Macro.escape(k))]
+        end
+      end)
+
     quote do
       test unquote(name) do
         ex_unit_config = ExUnit.configuration()
@@ -30,7 +39,8 @@ defmodule TestCase do
 
         ExUnit.configure(unquote(ex_unit_options))
         result = ExUnit.run([unquote(module_name)])
-        assert %{failures: 0} = result
+
+        unquote_splicing(assertions)
         result
       end
     end

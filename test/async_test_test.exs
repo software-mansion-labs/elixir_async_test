@@ -172,7 +172,55 @@ defmodule AsyncTestTest do
   end
 
   test_case "weird name" do
-    async_test "$%^9" do
+    async_test "$%/\\^9" do
+      :ok
+    end
+  end
+
+  defmodule FailureFormatter do
+    use GenServer
+
+    @impl true
+    def init(_opts) do
+      {:ok, %{}}
+    end
+
+    @impl true
+    def handle_cast({:test_finished, test}, state) do
+      assert %ExUnit.Test{state: {:failed, failures}} = test
+
+      assert [
+               {:error, %ExUnit.AssertionError{message: message},
+                [{_m, _f, _a, file: file, line: line}]}
+             ] = failures
+
+      assert message == "test location: #{file}:#{line}"
+      {:noreply, state}
+    end
+
+    @impl true
+    def handle_cast(_request, state) do
+      {:noreply, state}
+    end
+  end
+
+  test_case "failure location", result: [failures: 1], ex_unit: [formatters: [FailureFormatter]] do
+    async_test "test" do
+      assert false, "test location: #{Path.relative_to_cwd(__ENV__.file)}:#{__ENV__.line - 1}"
+    end
+  end
+
+  test_case "mix test --only location",
+    result: [excluded: 1],
+    ex_unit: [
+      exclude: :test,
+      include: [location: {Path.relative_to_cwd(__ENV__.file), __ENV__.line + 2}]
+    ] do
+    async_test "test 1" do
+      :ok
+    end
+
+    async_test "test 2" do
       :ok
     end
   end
