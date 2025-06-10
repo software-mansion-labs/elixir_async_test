@@ -7,12 +7,11 @@ defmodule AsyncTest do
   replacement.
 
   #{inspect(__MODULE__)} works in the following way:
-  - create a public function instead of a test
-  - create a new module with a single test that calls that function
-  - mimic `@tags`, `setup`, `setup_all`, and `describe` structure
-  in the new module
-  - ensure `setup_all` is called only once - store its result in an
-  `Agent` and retrieve it when needed
+  - creates a public function instead of a test
+  - creates a new module with a single test that calls that function
+  - mimics `@tags`, `setup`, `setup_all`, and `describe` structure in the new module
+  - ensures `setup_all` is called only once - stores its result in an
+  `Agent` and retrieves it when needed
   """
 
   # Like `unquote`, but only one level up in nested `quote`s tree.

@@ -5,11 +5,11 @@
   Just `import AsyncTest` and replace `test`s with `async_test`s. It should be a drop-in replacement.
 
   AsyncTest works in the following way:
-  - create a public function instead of a test
-  - create a new module with a single test that calls that function
-  - mimic `@tags`, `setup`, `setup_all`, and `describe` structure in the new module
-  - ensure `setup_all` is called only once - store its result in an
-  `Agent` and retrieve it when needed
+  - creates a public function instead of a test
+  - creates a new module with a single test that calls that function
+  - mimics `@tags`, `setup`, `setup_all`, and `describe` structure in the new module
+  - ensures `setup_all` is called only once - stores its result in an
+  `Agent` and retrieves it when needed
 
 ## Usage
 

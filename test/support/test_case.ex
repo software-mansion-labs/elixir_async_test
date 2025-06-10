@@ -3,7 +3,8 @@ defmodule TestCase do
   Utility for creating and running test cases within tests.
   """
   defmacro test_case(name, options \\ [], do: block) do
-    module_name = Module.concat(__CALLER__.module, :"Case_#{String.replace(name, ~r"\s", "_")}")
+    module_name =
+      Module.concat(__CALLER__.module, :"Case_#{String.replace(name, ~r/[^A-Za-z0-9]/, "_")}")
 
     ex_unit_options =
       Keyword.merge(
