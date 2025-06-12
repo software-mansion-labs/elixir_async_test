@@ -8,6 +8,17 @@ defmodule AsyncTest.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      aliases: [
+        lint: [
+          "format --check-formatted",
+          "deps.unlock --check-unused",
+          "credo",
+          "deps.compile",
+          "compile --force --warnings-as-errors",
+          "docs --warnings-as-errors",
+          "dialyzer"
+        ]
+      ],
       deps: deps()
     ]
   end
@@ -25,8 +36,9 @@ defmodule AsyncTest.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false, warn_if_outdated: true},
+      {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false}
     ]
   end
 end

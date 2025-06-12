@@ -1,2 +1,3 @@
-dbg(ExUnit.configuration())
+File.rm_rf("tmp")
+
 ExUnit.start()
