@@ -176,7 +176,7 @@ defmodule AsyncTest.CreateTestUtils do
   def agent_cache(module, name, fun) do
     agent_name = Module.concat([__MODULE__, :setup_all, module, name])
     Agent.start_link(fun, name: agent_name)
-    Agent.get(agent_name, & &1)
+    Agent.get(agent_name, & &1, :infinity)
   end
 
   defp setups_to_proxy(module, attr_name) do
